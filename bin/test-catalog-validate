@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""validate test-catalog json against json schema"""
+
+import argparse
+import logging
+import json
+import os
+import sys
+
+import jsonschema
+
+default_schema_file = os.path.join(os.path.dirname(__file__),
+                                   '..', 'schema', 'test-catalog-schema.json')
+
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description=__doc__.split("\n\n")[0],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    ap.add_argument(
+        "--test-catalog-file", "-t",
+        required=True,
+        help="test-catalog json filename",
+    )
+    ap.add_argument(
+        "--schema-file", "-s",
+        default=default_schema_file,
+        help="schema filename",
+    )
+    opts = ap.parse_args()
+    return opts
+
+
+
+if __name__ == "__main__":
+    opts = parse_args()
+
+    schema = json.load(open(opts.schema_file))
+    test_catalog = json.load(open(opts.test_catalog_file))
+    
+    jsonschema.validate(test_catalog, schema)

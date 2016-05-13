@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+
+"""reformt Invitae "commercial tests" to a product test catalog for Syapse use, in json
+
+Use:
+$ ./bin/test-catalog-generate --example  >schema/test-catalog-example.json  
+
+test-catalog-example.json looks like this:
+
+  {
+    "meta": {
+      "name": "Invitae test catalog",
+      "schema_version": 0,
+      "url": "https://www.invitae.com/",
+      "version": "8.4.4"
+    },
+    "order_group_tests": {
+      "Cardiology": [
+        "PR02101.03"
+      ],
+      "Pediatric Oncology": [
+        "PR01106.01"
+      ]
+    },
+    "tests": {
+      "PR01106.01": {
+        "code": "PR01106.01",
+        "description": "The Invitae Pediatric Nervous System/Brain Tumors Panel analyzes 24 genes \u2026",
+        "genes": [
+          "ALK",
+          "(22 genes skipped)",
+          "VHL"
+        ],
+        "keyphrases": [
+          "astrocytoma",
+          "(47 keyphrases skipped)",
+          "subependymal giant cell astrocytoma"
+        ],
+        "name": "Invitae Pediatric Nervous System/Brain Tumors Panel",
+        "opt_tests": [
+          "PR01106.01.1"
+        ],
+        "order_group": "Pediatric Oncology",
+        "requires": null,
+        "url": "https://www.invitae.com/en/physician/tests/01106/"
+      },
+      ...
+    }
+  }
+
+
+"""
+
+
+import argparse
+import collections
+import datetime
+import gzip
+import hashlib
+import itertools
+import io
+import json
+import logging
+import os
+import re
+import sys
+
+import requests
+
+
+verbosity_to_log_level = {0: "WARN", 1: "INFO", 2: "DEBUG"}
+_logger = logging.getLogger()
+
+
+def unnest_tests(tests):
+    """yield (test, test_type) tuples by depth-first traversal of
+    commercial tests
+
+    Tests (aka products) are represented by concept mapper in two
+    levels: each (top-level) product may contain opt-in tests and a
+    list of single-gene tests.
+    """
+
+    for t in tests:
+        yield (t, "panel")
+        for t2 in t.get("opt_tests",[]):
+            yield (t2, "opt")
+        for t2 in t.get("gene_tests",[]):
+            yield (t2, "gene")
+
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description=__doc__.split("\n\n")[0],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+    ap.add_argument(
+        "--example",
+        default=False,
+        action="store_true",
+        help="generates a file using just a few products and order groups",
+        )
+    ap.add_argument(
+        "--input-file", "-i"
+        )
+    ap.add_argument(
+        "--verbose", "-v",
+	action="count",
+	default=0,
+	help="be increasingly chatty"
+    )
+    opts = ap.parse_args()
+    return opts
+
+
+def fetch_mapper_tests(url):
+    url_sha1 = hashlib.sha1(url.encode("UTF-8")).hexdigest()[:8]
+    ds = datetime.datetime.strftime(datetime.datetime.now(), "%F")
+    cache_fn = os.path.join("/tmp", "test-catalog~" + url_sha1 + "~" + ds)
+    if not os.path.isfile(cache_fn):
+        _logger.info("Fetching tests from " + url)
+        resp = requests.get(url, verify='/etc/ssl/certs/ca-certificates.crt')
+        resp.raise_for_status()
+        with io.open(cache_fn, "w") as file:
+            file.write(resp.text)
+        _logger.info("Wrote tests to " + cache_fn)
+    with io.open(cache_fn, "r") as file:
+        return file.read()
+
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARN)
+
+    opts = parse_args()
+    
+    _logger.setLevel(verbosity_to_log_level.get(opts.verbose,"DEBUG"))
+    _logger.info("verbosity={opts.verbose} => setting logging level set to {n} ({l})".format(
+        opts = opts, l = _logger.level, n = logging._levelToName[_logger.level]))
+
+    if opts.input_file:
+        fh = gzip.open(opts.input_file, "rt") if opts.input_file.endswith(".gz") else io.open(opts.input_file, "r")
+        tests = json.load(fh)
+    else:
+        url = "https://mapper-prd.vpc.locusdev.net/graphsearch/commercial_tests/?aggregation_type=CT_GROUP"
+        tests = json.loads(fetch_mapper_tests(url))
+
+    code_filter_re = None
+    if opts.example:
+        code_filter_re = re.compile("PR(?:02101|01106)")
+
+    mapper_versions = set(t["mapper_version"] for t in tests)
+    assert len(mapper_versions) == 1, "tests contains multiple mapper versions ?!"
+    mapper_version = list(mapper_versions)[0]
+
+    products = {
+        "meta": {
+            "name": "Invitae test catalog",
+            "schema_version": 0,
+            "url": "https://www.invitae.com/",
+            "version": mapper_version,
+            },
+
+        "tests": {},
+        }
+        
+    genes_seen = set()
+    order_group_tests = collections.defaultdict(lambda: [])
+    cats = dict()
+
+    for test, test_type in unnest_tests(tests):
+        code = test["code"]
+
+        if test_type == "gene":
+            _logger.debug("Skipping {code} ({test_type}): not including single gene products".format(
+                code=code, test_type=test_type))
+            continue
+
+        if code_filter_re and not code_filter_re.match(code):
+            _logger.debug("Skipping {code} ({test_type}): filtered product".format(
+                code=code, test_type=test_type))
+            continue
+
+        if not all(t in test["tags"] for t in ["Available", "Public"]):
+            _logger.debug("Skipping {code} ({test_type}): not Available and Public".format(
+                code=code, test_type=test_type))
+            continue
+
+        _logger.debug("Processing {code} ({test_type}): not Available and Public".format(
+            code=code, test_type=test_type))
+
+        description = test["description"]
+
+        genes = sorted([gt["name"] for gt in test["gene_tests"]])
+        genes_seen.update(genes)
+
+        order_groups = [c["name"].replace("Order Group: ","")
+                        for c in test["categories"]
+                        if c["concept_type"] == "order_group"]
+
+        try:
+            keyphrases = test.get("alias",None).split("; ")
+        except AttributeError:
+            keyphrases = []
+
+        try:
+            requires = re.match('^(PR\d+\.\d+)\.\d+$', code).group(1)
+        except AttributeError:
+            requires = None
+
+        if opts.example:
+            description = " ".join(description.split()[:10] + ["…"])
+            genes = genes if len(genes) < 5 else [genes[0], "({n} genes skipped)".format(n=len(genes)-2), genes[-1]]
+            keyphrases = keyphrases if len(keyphrases) < 5 else [keyphrases[0], "({n} keyphrases skipped)".format(
+                n=len(keyphrases)-2), keyphrases[-1]]
+
+        prn = code[2:].partition(".")[0]  # e.g., PR01234.05.6 => 01234
+        p = dict(
+            code = code,
+            description = description,
+            genes = genes,
+            name = test["name"],
+            keyphrases = keyphrases,
+            opt_tests = [ot["code"] for ot in test.get("opt_tests", [])],
+            requires = requires,
+            url = "https://www.invitae.com/en/physician/tests/{prn}/".format(prn=prn),
+            order_groups = order_groups,
+            )
+
+        # if this is a parent test, add it to the order_group
+        if requires is None:
+            for og in order_groups:
+                order_group_tests[og].append(code)
+
+        products["tests"][code] = p
+
+
+    # sort tests within each order group (for no particular reason)
+    for v in order_group_tests.values():
+        v.sort()
+    products["order_group_tests"] = order_group_tests
+
+    print(json.dumps(products, sort_keys=True, indent=2))
+    
+    _logger.info("wrote {n_tests} tests for {n_genes} genes in {n_ogs} order groups".format(
+        n_tests = len(products["tests"]),
+        n_ogs = len(products["order_group_tests"]),
+        n_genes = len(genes_seen),
+        ))
+

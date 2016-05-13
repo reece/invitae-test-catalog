@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "name": "Invitae test menu",
+    "schema_version": 0,
+    "url": "https://www.invitae.com/",
+    "version": "8.4.4"
+  },
+  "order_group_tests": {
+    "Cardiology": [
+      "PR02101.03"
+    ],
+    "Hereditary Cancer": [
+      "PR01106.01"
+    ],
+    "Pediatric Oncology": [
+      "PR01106.01"
+    ]
+  },
+  "tests": {
+    "PR01106.01": {
+      "code": "PR01106.01",
+      "description": "The Invitae Pediatric Nervous System/Brain Tumors Panel analyzes 24 genes \u2026",
+      "genes": [
+        "ALK",
+        "(22 genes skipped)",
+        "VHL"
+      ],
+      "keyphrases": [
+        "astrocytoma",
+        "(47 keyphrases skipped)",
+        "subependymal giant cell astrocytoma"
+      ],
+      "name": "Invitae Pediatric Nervous System/Brain Tumors Panel",
+      "opt_tests": [
+        "PR01106.01.1"
+      ],
+      "order_groups": [
+        "Hereditary Cancer",
+        "Pediatric Oncology"
+      ],
+      "requires": null,
+      "url": "https://www.invitae.com/en/physician/tests/01106/"
+    },
+    "PR01106.01.1": {
+      "code": "PR01106.01.1",
+      "description": "Head-and-neck paragangliomas are neuroendocrine tumors that may occur in families \u2026",
+      "genes": [
+        "MAX",
+        "(6 genes skipped)",
+        "TMEM127"
+      ],
+      "keyphrases": [],
+      "name": "Hereditary paraganglioma pheochromocytoma genes for pediatric nervous system cancers",
+      "opt_tests": [],
+      "order_groups": [
+        "Hereditary Cancer",
+        "Pediatric Oncology"
+      ],
+      "requires": "PR01106.01",
+      "url": "https://www.invitae.com/en/physician/tests/01106/"
+    },
+    "PR02101.03": {
+      "code": "PR02101.03",
+      "description": "This test provides a comprehensive analysis of the genes associated \u2026",
+      "genes": [
+        "ABCC9",
+        "(58 genes skipped)",
+        "VCL"
+      ],
+      "keyphrases": [],
+      "name": "Invitae Arrhythmia and Cardiomyopathy Comprehensive Panel",
+      "opt_tests": [
+        "PR02101.03.1",
+        "PR02101.03.2",
+        "PR02101.03.3",
+        "PR02101.03.4"
+      ],
+      "order_groups": [
+        "Cardiology"
+      ],
+      "requires": null,
+      "url": "https://www.invitae.com/en/physician/tests/02101/"
+    },
+    "PR02101.03.1": {
+      "code": "PR02101.03.1",
+      "description": "Preliminary-evidence genes currently have early evidence of a clinical association \u2026",
+      "genes": [
+        "AKAP9",
+        "(39 genes skipped)",
+        "TXNRD2"
+      ],
+      "keyphrases": [],
+      "name": "Preliminary-evidence genes for arrhythmia and cardiomyopathy",
+      "opt_tests": [],
+      "order_groups": [
+        "Cardiology"
+      ],
+      "requires": "PR02101.03",
+      "url": "https://www.invitae.com/en/physician/tests/02101/"
+    },
+    "PR02101.03.2": {
+      "code": "PR02101.03.2",
+      "description": "Structural heart defects or hypertrophic cardiomyopathy are also common features \u2026",
+      "genes": [
+        "A2ML1",
+        "(13 genes skipped)",
+        "SPRED1"
+      ],
+      "keyphrases": [],
+      "name": "RASopathy genes for arrhythmia and cardiomyopathy",
+      "opt_tests": [],
+      "order_groups": [
+        "Cardiology"
+      ],
+      "requires": "PR02101.03",
+      "url": "https://www.invitae.com/en/physician/tests/02101/"
+    },
+    "PR02101.03.3": {
+      "code": "PR02101.03.3",
+      "description": "Genes associated with early-onset cardiomyopathy as part of an autosomal \u2026",
+      "genes": [
+        "ALMS1",
+        "ELAC2",
+        "MTO1",
+        "SDHA"
+      ],
+      "keyphrases": [],
+      "name": "Autosomal recessive syndromic pediatric cardiomyopathy",
+      "opt_tests": [],
+      "order_groups": [
+        "Cardiology"
+      ],
+      "requires": "PR02101.03",
+      "url": "https://www.invitae.com/en/physician/tests/02101/"
+    },
+    "PR02101.03.4": {
+      "code": "PR02101.03.4",
+      "description": "The symptoms associated with arrhythmia and seizures can appear very \u2026",
+      "genes": [
+        "DEPDC5",
+        "(8 genes skipped)",
+        "SLC2A1"
+      ],
+      "keyphrases": [],
+      "name": "Sudden unexpected death in epilepsy (SUDEP) genes for arrhythmia and cardiomyopathy",
+      "opt_tests": [],
+      "order_groups": [
+        "Cardiology"
+      ],
+      "requires": "PR02101.03",
+      "url": "https://www.invitae.com/en/physician/tests/02101/"
+    }
+  }
+}
